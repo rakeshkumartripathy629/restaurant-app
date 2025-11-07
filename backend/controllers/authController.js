@@ -45,25 +45,46 @@ export const registerUser = async (req, res) => {
 export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
-    if (!email || !password) {
-      return res.json({
-        message: "Please fill all the fields",
-        success: false,
-      });
-    }
+
+    // Find user
     const user = await User.findOne({ email });
     if (!user) {
-      return res.json({ message: "User does not exist", success: false });
+      return res.status(401).json({ message: "Invalid credentials", success: false });
     }
-    const isMatch = await bcrypt.compare(password, user.password);
+
+    // Check password (assuming you have a comparePassword method)
+    const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      return res.json({ message: "Invalid credentials", success: false });
+      return res.status(401).json({ message: "Invalid credentials", success: false });
     }
-    const token = generateToken(res, { id: user._id });
-    return res.json({ message: "Login successful", success: true, token });
+
+    // Generate JWT token
+    const token = jwt.sign({ id: user._id, isAdmin: user.isAdmin }, process.env.JWT_SECRET, {
+      expiresIn: "7d",
+    });
+
+    // ✅ Set token in httpOnly cookie
+    res.cookie("token", token, {
+      httpOnly: true,
+      sameSite: "Lax", // 'None' if using cross-origin HTTPS
+      secure: false,   // true if using HTTPS in production
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
+    // Send response
+    res.status(200).json({
+      success: true,
+      message: "Logged in successfully",
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        isAdmin: user.isAdmin,
+      },
+    });
   } catch (error) {
-    console.log(error.message);
-    return res.json({ message: "Internal server error", success: false });
+    console.error(error);
+    res.status(500).json({ message: "Server error", success: false });
   }
 };
 
