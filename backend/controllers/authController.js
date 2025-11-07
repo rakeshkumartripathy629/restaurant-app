@@ -89,6 +89,7 @@ export const adminLogin = async (req, res) => {
         success: false,
       });
     }
+
     const adminEmail = process.env.ADMIN_EMAIL;
     const adminPassword = process.env.ADMIN_PASSWORD;
 
@@ -100,6 +101,7 @@ export const adminLogin = async (req, res) => {
       expiresIn: "1d",
     });
 
+    // Store token in cookie
     res.cookie("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -107,12 +109,12 @@ export const adminLogin = async (req, res) => {
       maxAge: 24 * 60 * 60 * 1000,
     });
 
+    // ✅ Return token also in response
     return res.json({
       success: true,
       message: "Admin logged in successfully",
-      admin: {
-        admin: adminEmail,
-      },
+      token, // 👈 Add this line
+      admin: { email: adminEmail },
     });
   } catch (error) {
     console.log(error.message);

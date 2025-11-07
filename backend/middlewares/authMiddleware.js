@@ -44,17 +44,22 @@ export const protect = async (req, res, next) => {
 
 
 export const adminOnly = (req, res, next) => {
-  const token = req.cookies.token;
-  if (!token) {
-    return res.status(401).json({ message: "Not Authorized", success: false });
-  }
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.admin = decoded;
-    if (req.admin.email === process.env.ADMIN_EMAIL) {
-      next();
+    // Make sure req.user exists (from protect middleware)
+    if (!req.user) {
+      return res.status(401).json({ message: "Not authorized", success: false });
     }
+
+    // Check if user is admin
+    if (!req.user.isAdmin) {
+      return res.status(403).json({ message: "Admin only", success: false });
+    }
+
+    // ✅ User is admin, proceed
+    next();
   } catch (error) {
-    res.status(401).json({ message: "Invalid token" });
+    console.error(error);
+    res.status(500).json({ message: "Internal server error", success: false });
   }
 };
+
